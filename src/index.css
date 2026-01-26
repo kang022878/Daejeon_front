@@ -1,0 +1,250 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* RE: DAEJEON Design System - Space/Futuristic Theme */
+/* All colors MUST be HSL */
+
+@layer base {
+  :root {
+    /* Core Space Theme */
+    --background: 0 0% 0%;
+    --foreground: 0 0% 100%;
+
+    /* Cards & Surfaces */
+    --card: 0 0% 5%;
+    --card-foreground: 0 0% 100%;
+
+    --popover: 0 0% 5%;
+    --popover-foreground: 0 0% 100%;
+
+    /* Neon Accents */
+    --neon-blue: 200 100% 50%;
+    --neon-blue-glow: 200 100% 60%;
+    --neon-yellow: 50 100% 50%;
+    --neon-yellow-glow: 50 100% 65%;
+
+    /* Primary = Neon Blue */
+    --primary: 200 100% 50%;
+    --primary-foreground: 0 0% 0%;
+
+    /* Secondary = Neon Yellow */
+    --secondary: 50 100% 50%;
+    --secondary-foreground: 0 0% 0%;
+
+    /* Muted for subtle elements */
+    --muted: 0 0% 15%;
+    --muted-foreground: 0 0% 60%;
+
+    /* Accent */
+    --accent: 200 100% 50%;
+    --accent-foreground: 0 0% 0%;
+
+    /* Destructive */
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 0 0% 100%;
+
+    /* Borders & Inputs */
+    --border: 0 0% 20%;
+    --input: 0 0% 15%;
+    --ring: 200 100% 50%;
+
+    --radius: 0.5rem;
+
+    /* Metallic effect colors */
+    --metallic-silver: 0 0% 75%;
+    --metallic-gold: 45 80% 55%;
+    --metallic-dark: 0 0% 10%;
+
+    /* Space particles */
+    --star-white: 0 0% 100%;
+    --star-blue: 200 100% 70%;
+
+    /* Sidebar (if needed) */
+    --sidebar-background: 0 0% 5%;
+    --sidebar-foreground: 0 0% 100%;
+    --sidebar-primary: 200 100% 50%;
+    --sidebar-primary-foreground: 0 0% 0%;
+    --sidebar-accent: 0 0% 10%;
+    --sidebar-accent-foreground: 0 0% 100%;
+    --sidebar-border: 0 0% 20%;
+    --sidebar-ring: 200 100% 50%;
+  }
+
+  /* Dark mode is the default and only mode for this project */
+  .dark {
+    --background: 0 0% 0%;
+    --foreground: 0 0% 100%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  html {
+    @apply antialiased;
+  }
+
+  body {
+    @apply bg-background text-foreground;
+    font-family: "Inter", system-ui, -apple-system, sans-serif;
+    letter-spacing: 0.02em;
+  }
+}
+
+/* Typography utilities for cinematic feel */
+@layer components {
+  .text-elegant {
+    @apply font-light tracking-[0.15em] uppercase;
+  }
+
+  .text-title {
+    @apply font-light tracking-[0.2em] uppercase;
+  }
+
+  .text-subtitle {
+    @apply font-extralight tracking-[0.1em];
+  }
+
+  /* Neon glow effects */
+  .glow-blue {
+    text-shadow: 0 0 10px hsl(var(--neon-blue) / 0.8),
+                 0 0 20px hsl(var(--neon-blue) / 0.6),
+                 0 0 40px hsl(var(--neon-blue) / 0.4);
+  }
+
+  .glow-yellow {
+    text-shadow: 0 0 10px hsl(var(--neon-yellow) / 0.8),
+                 0 0 20px hsl(var(--neon-yellow) / 0.6),
+                 0 0 40px hsl(var(--neon-yellow) / 0.4);
+  }
+
+  .glow-blue-box {
+    box-shadow: 0 0 10px hsl(var(--neon-blue) / 0.5),
+                0 0 20px hsl(var(--neon-blue) / 0.3),
+                0 0 40px hsl(var(--neon-blue) / 0.2);
+  }
+
+  .glow-yellow-box {
+    box-shadow: 0 0 10px hsl(var(--neon-yellow) / 0.5),
+                0 0 20px hsl(var(--neon-yellow) / 0.3),
+                0 0 40px hsl(var(--neon-yellow) / 0.2);
+  }
+
+  /* Space background with particles */
+  .space-bg {
+    background: radial-gradient(ellipse at center, hsl(220 30% 5%) 0%, hsl(0 0% 0%) 100%);
+    position: relative;
+    overflow: hidden;
+  }
+
+  /* Metallic text effect */
+  .metallic-text {
+    background: linear-gradient(
+      180deg,
+      hsl(var(--metallic-silver)) 0%,
+      hsl(0 0% 50%) 50%,
+      hsl(var(--metallic-silver)) 100%
+    );
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+
+  .metallic-gold-text {
+    background: linear-gradient(
+      180deg,
+      hsl(45 90% 70%) 0%,
+      hsl(var(--metallic-gold)) 50%,
+      hsl(45 70% 40%) 100%
+    );
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+}
+
+/* Keyframes for cinematic animations */
+@keyframes float {
+  0%, 100% {
+    transform: translateY(0) translateZ(0);
+  }
+  50% {
+    transform: translateY(-10px) translateZ(5px);
+  }
+}
+
+@keyframes orbit {
+  0% {
+    transform: rotateY(0deg) translateX(60px) rotateY(0deg);
+  }
+  100% {
+    transform: rotateY(360deg) translateX(60px) rotateY(-360deg);
+  }
+}
+
+@keyframes pulse-glow {
+  0%, 100% {
+    opacity: 0.6;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.05);
+  }
+}
+
+@keyframes star-twinkle {
+  0%, 100% {
+    opacity: 0.3;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+@keyframes rise-z {
+  0% {
+    transform: translateZ(-50px);
+    opacity: 0;
+  }
+  100% {
+    transform: translateZ(0);
+    opacity: 1;
+  }
+}
+
+.animate-float {
+  animation: float 4s ease-in-out infinite;
+}
+
+.animate-orbit {
+  animation: orbit 8s linear infinite;
+}
+
+.animate-pulse-glow {
+  animation: pulse-glow 3s ease-in-out infinite;
+}
+
+.animate-star-twinkle {
+  animation: star-twinkle 2s ease-in-out infinite;
+}
+
+.animate-rise-z {
+  animation: rise-z 1.5s ease-out forwards;
+}
+
+/* Preserve 3D for true depth */
+.preserve-3d {
+  transform-style: preserve-3d;
+}
+
+.perspective-1000 {
+  perspective: 1000px;
+}
+
+.perspective-2000 {
+  perspective: 2000px;
+}
