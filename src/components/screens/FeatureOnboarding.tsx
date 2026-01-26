@@ -192,16 +192,6 @@ export function FeatureOnboarding({ onComplete }: FeatureOnboardingProps) {
                 </Button>
               </motion.div>
 
-              {/* Alternative login */}
-              <motion.button
-                className="mt-6 text-sm text-muted-foreground hover:text-foreground transition-colors"
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                transition={{ duration: 0.5, delay: 0.9 }}
-                onClick={handleKakaoLogin}
-              >
-                다른 방법으로 로그인
-              </motion.button>
             </motion.div>
           )}
         </AnimatePresence>

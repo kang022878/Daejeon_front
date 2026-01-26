@@ -74,6 +74,7 @@ export function MoodInputScreen({ onComplete }: MoodInputScreenProps) {
           <OrbitGalleryScene
             selectedImages={selectedImages}
             onImageClick={handleImageClick}
+            showCenter={false}
           />
         </Suspense>
       </motion.div>

@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useRef, useState, useEffect, type PointerEvent } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { SpiralAnimation } from "@/components/SpiralAnimation";
 import { MetallicDaejeonMap } from "@/components/MetallicDaejeonMap";
@@ -12,6 +12,9 @@ interface OnboardingCityBirthProps {
 
 export function OnboardingCityBirth({ onComplete }: OnboardingCityBirthProps) {
   const [phase, setPhase] = useState<Phase>("spiral");
+  const swipeStartY = useRef<number | null>(null);
+  const swipeStartTime = useRef<number | null>(null);
+  const hasCompleted = useRef(false);
 
   useEffect(() => {
     // Phase timing
@@ -23,20 +26,52 @@ export function OnboardingCityBirth({ onComplete }: OnboardingCityBirthProps) {
     // Map reveal completes, show text
     timers.push(setTimeout(() => setPhase("text"), 8500));
     
-    // Complete after text animation
+    // Ready for swipe after text animation
     timers.push(setTimeout(() => setPhase("complete"), 12000));
 
     return () => timers.forEach(clearTimeout);
   }, []);
 
-  useEffect(() => {
-    if (phase === "complete" && onComplete) {
-      onComplete();
+  const triggerComplete = () => {
+    if (hasCompleted.current) {
+      return;
     }
-  }, [phase, onComplete]);
+    hasCompleted.current = true;
+    onComplete?.();
+  };
+
+  const handlePointerDown = (event: PointerEvent<HTMLDivElement>) => {
+    if (phase !== "complete") {
+      return;
+    }
+    swipeStartY.current = event.clientY;
+    swipeStartTime.current = Date.now();
+  };
+
+  const handlePointerEnd = (event: PointerEvent<HTMLDivElement>) => {
+    if (phase !== "complete" || swipeStartY.current === null) {
+      return;
+    }
+    const deltaY = event.clientY - swipeStartY.current;
+    const elapsed = Date.now() - (swipeStartTime.current ?? Date.now());
+    const velocityY = deltaY / Math.max(elapsed, 1);
+
+    swipeStartY.current = null;
+    swipeStartTime.current = null;
+
+    if (deltaY < -60 || velocityY < -0.5) {
+      triggerComplete();
+    }
+  };
 
   return (
-    <div className="relative h-screen w-full overflow-hidden bg-background">
+    <div
+      className="relative h-screen w-full overflow-hidden bg-background"
+      onPointerDown={handlePointerDown}
+      onPointerUp={handlePointerEnd}
+      onPointerCancel={handlePointerEnd}
+      onPointerLeave={handlePointerEnd}
+    >
       {/* Space background - always visible */}
       <SpaceParticles particleCount={80} />
 
@@ -70,7 +105,7 @@ export function OnboardingCityBirth({ onComplete }: OnboardingCityBirthProps) {
             transition={{ duration: 1 }}
             className="absolute inset-0 flex items-center justify-center"
           >
-            <MetallicDaejeonMap />
+            <MetallicDaejeonMap imageSrc="/daejeon-map.png" />
           </motion.div>
         )}
       </AnimatePresence>

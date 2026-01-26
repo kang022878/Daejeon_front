@@ -199,24 +199,6 @@ export function PlaceSelectionScreen({
             )}
           </Button>
 
-          {/* Generate route button */}
-          <Button
-            onClick={handleGenerateRoute}
-            disabled={selectedPlaces.length < 2 || isGenerating}
-            className="w-full h-14 bg-secondary text-secondary-foreground glow-yellow-box hover:bg-secondary/90 transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            {isGenerating ? (
-              <Loader2 className="w-5 h-5 animate-spin" />
-            ) : (
-              <>
-                <span className="text-elegant text-sm">
-                  루트 생성하기 ({selectedPlaces.length}/5)
-                </span>
-                <ChevronRight className="w-5 h-5 ml-2" />
-              </>
-            )}
-          </Button>
-
           {selectedPlaces.length < 2 && (
             <p className="text-center text-xs text-muted-foreground">
               최소 2개 이상의 장소를 선택해주세요

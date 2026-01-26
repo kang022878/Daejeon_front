@@ -1,6 +1,6 @@
-import { Canvas } from "@react-three/fiber";
+import { Canvas, useThree } from "@react-three/fiber";
 import { OrbitingImage } from "./OrbitingImage";
-import { Environment, Float } from "@react-three/drei";
+import { Environment, Float, Image } from "@react-three/drei";
 
 // Placeholder mood images - these would be replaced with actual user photos
 const MOOD_IMAGES = [
@@ -17,9 +17,19 @@ const MOOD_IMAGES = [
 interface OrbitGallerySceneProps {
   selectedImages: number[];
   onImageClick: (index: number) => void;
+  centerImageSrc?: string;
+  showCenter?: boolean;
 }
 
-function Scene({ selectedImages, onImageClick }: OrbitGallerySceneProps) {
+function Scene({
+  selectedImages,
+  onImageClick,
+  centerImageSrc,
+  showCenter,
+}: OrbitGallerySceneProps) {
+  const { size } = useThree();
+  const orbitRadius = size.width < 768 ? 2.8 : 3.6;
+
   return (
     <>
       {/* Ambient lighting for visibility */}
@@ -34,7 +44,7 @@ function Scene({ selectedImages, onImageClick }: OrbitGallerySceneProps) {
           url={url}
           index={index}
           total={MOOD_IMAGES.length}
-          radius={4}
+          radius={orbitRadius}
           rotationSpeed={0.15}
           isSelected={selectedImages.includes(index)}
           onClick={() => onImageClick(index)}
@@ -42,20 +52,26 @@ function Scene({ selectedImages, onImageClick }: OrbitGallerySceneProps) {
       ))}
       
       {/* Center focal point - subtle glow */}
-      <Float speed={2} rotationIntensity={0.5} floatIntensity={0.5}>
-        <mesh position={[0, 0, 0]}>
-          <sphereGeometry args={[0.3, 32, 32]} />
-          <meshBasicMaterial 
-            color="#00bfff" 
-            transparent 
-            opacity={0.4}
-          />
-        </mesh>
-      </Float>
+      {showCenter !== false && (
+        <Float speed={2} rotationIntensity={0.5} floatIntensity={0.5}>
+          {centerImageSrc ? (
+            <Image url={centerImageSrc} scale={[0.9, 0.9, 1]} position={[0, 0, 0]} />
+          ) : (
+            <mesh position={[0, 0, 0]}>
+              <sphereGeometry args={[0.3, 32, 32]} />
+              <meshBasicMaterial
+                color="#00bfff"
+                transparent
+                opacity={0.4}
+              />
+            </mesh>
+          )}
+        </Float>
+      )}
       
       {/* Orbit ring indicator */}
       <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.5, 0]}>
-        <ringGeometry args={[3.8, 4.2, 64]} />
+        <ringGeometry args={[orbitRadius - 0.2, orbitRadius + 0.2, 64]} />
         <meshBasicMaterial 
           color="#00bfff" 
           transparent 
@@ -69,7 +85,12 @@ function Scene({ selectedImages, onImageClick }: OrbitGallerySceneProps) {
   );
 }
 
-export function OrbitGalleryScene({ selectedImages, onImageClick }: OrbitGallerySceneProps) {
+export function OrbitGalleryScene({
+  selectedImages,
+  onImageClick,
+  centerImageSrc,
+  showCenter,
+}: OrbitGallerySceneProps) {
   return (
     <Canvas
       camera={{ 
@@ -84,7 +105,12 @@ export function OrbitGalleryScene({ selectedImages, onImageClick }: OrbitGallery
         alpha: true,
       }}
     >
-      <Scene selectedImages={selectedImages} onImageClick={onImageClick} />
+      <Scene
+        selectedImages={selectedImages}
+        onImageClick={onImageClick}
+        centerImageSrc={centerImageSrc}
+        showCenter={showCenter}
+      />
     </Canvas>
   );
 }

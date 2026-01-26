@@ -66,9 +66,8 @@ export function FloatingImage({
     const normalizedZ = (groupRef.current.position.z + 3) / 6;
     const depthScale = 0.6 + normalizedZ * 0.8;
     
-    // Apply selection and hover effects
+    // Apply hover effect only; selection should rely on glow
     let targetScale = depthScale;
-    if (isSelected) targetScale *= 1.2;
     if (hovered) targetScale *= 1.1;
     
     imageRef.current.scale.setScalar(THREE.MathUtils.lerp(
