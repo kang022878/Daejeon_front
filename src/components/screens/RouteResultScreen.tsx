@@ -12,11 +12,12 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { ChevronRight, History, MapPin, Clock, LogOut, RotateCcw, Navigation } from "lucide-react";
-import { PLACE_IMAGES } from "@/components/3d/ImageFieldScene";
-import { verifyVisit } from "@/lib/api";
+import { type PlaceImage } from "@/components/3d/ImageFieldScene";
+import { getPlacePhoto, uploadPlacePhoto } from "@/lib/api";
 
 interface RouteResultScreenProps {
-  selectedPlaces?: number[];
+  selectedPlaces?: PlaceImage[];
+  routeCoords?: [number, number][];
   onReselect?: () => void;
   onReselectMood?: () => void;
   onViewHistory?: () => void;
@@ -27,23 +28,9 @@ interface RouteResultScreenProps {
   onPhotoUpload?: (pinId: string, url: string) => void;
 }
 
-const PLACE_COORDS: [number, number][] = [
-  [127.3872, 36.3514],
-  [127.3831, 36.3489],
-  [127.3928, 36.3552],
-  [127.3794, 36.3537],
-  [127.3899, 36.3465],
-  [127.3813, 36.3571],
-  [127.3961, 36.3492],
-  [127.3758, 36.3501],
-  [127.3857, 36.3443],
-  [127.3982, 36.3567],
-  [127.3742, 36.3478],
-  [127.3915, 36.3526],
-];
-
 export function RouteResultScreen({ 
-  selectedPlaces = [0, 2, 4, 6, 8], 
+  selectedPlaces = [], 
+  routeCoords = [],
   onReselect,
   onReselectMood,
   onViewHistory,
@@ -59,26 +46,89 @@ export function RouteResultScreen({
 }: RouteResultScreenProps) {
   const [showDetails, setShowDetails] = useState(false);
   const [activePinId, setActivePinId] = useState<string | null>(null);
+  const [currentLocation, setCurrentLocation] = useState<{ lat: number; lng: number } | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const onPhotoUploadRef = useRef(onPhotoUpload);
+  const fetchedPlaceIdsRef = useRef<Set<number>>(new Set());
 
   const pins = useMemo(() => {
-    const uniquePlaces = selectedPlaces.slice(0, 5);
-    return uniquePlaces.map((placeIndex, idx) => {
-      const coords = PLACE_COORDS[placeIndex] ?? PLACE_COORDS[idx % PLACE_COORDS.length];
-      return {
-        id: String(placeIndex),
-        lng: coords[0],
-        lat: coords[1],
-      };
+    return selectedPlaces.slice(0, 5).flatMap((place, idx) => {
+      const lat = place.lat;
+      const lng = place.lng;
+      if (typeof lat !== "number" || typeof lng !== "number") return [];
+      const pinId = place.id ?? idx;
+      return [
+        {
+          id: String(pinId),
+          place_id: typeof place.id === "number" ? place.id : null,
+          lng,
+          lat,
+        },
+      ];
     });
   }, [selectedPlaces]);
 
-  const routeCoords = useMemo(() => pins.map((pin) => [pin.lng, pin.lat] as [number, number]), [pins]);
+  const fallbackRouteCoords = useMemo(
+    () => pins.map((pin) => [pin.lng, pin.lat] as [number, number]),
+    [pins]
+  );
+  const routeMeta = useMemo(
+    () =>
+      selectedPlaces.map((place) => ({
+        duration: place.duration,
+        transport: place.transport,
+      })),
+    [selectedPlaces]
+  );
 
   useEffect(() => {
     const timer = setTimeout(() => setShowDetails(true), 900);
     return () => clearTimeout(timer);
   }, []);
+
+  useEffect(() => {
+    if (!navigator.geolocation) return;
+    const watchId = navigator.geolocation.watchPosition(
+      (position) => {
+        setCurrentLocation({
+          lat: position.coords.latitude,
+          lng: position.coords.longitude,
+        });
+      },
+      () => {
+        // Ignore geolocation errors for now.
+      },
+      { enableHighAccuracy: true, maximumAge: 15000, timeout: 10000 }
+    );
+    return () => navigator.geolocation.clearWatch(watchId);
+  }, []);
+
+  useEffect(() => {
+    onPhotoUploadRef.current = onPhotoUpload;
+  }, [onPhotoUpload]);
+
+  useEffect(() => {
+    if (selectedPlaces.length === 0) return;
+    selectedPlaces.forEach((place, index) => {
+    const placeId = typeof place.id === "number" ? place.id : null;
+    if (!placeId) return;
+      if (fetchedPlaceIdsRef.current.has(placeId)) return;
+      fetchedPlaceIdsRef.current.add(placeId);
+      getPlacePhoto(placeId)
+        .then((payload) => {
+          const url =
+            (payload.image_url as string | undefined) ||
+            (payload.url as string | undefined) ||
+            (payload.photo_url as string | undefined);
+          if (url) {
+            onPhotoUploadRef.current?.(String(placeId), url);
+          }
+        })
+        .catch(() => {
+          // Ignore missing photo.
+        });
+    });
+  }, [selectedPlaces]);
 
   const handlePinClick = (pinId: string) => {
     setActivePinId(pinId);
@@ -91,20 +141,14 @@ export function RouteResultScreen({
     const nextUrl = URL.createObjectURL(file);
     onPhotoUpload?.(activePinId, nextUrl);
 
-    const pin = pins.find((item) => item.id === activePinId);
-    if (!pin) return;
+    const placeId = Number(activePinId);
+    if (!Number.isFinite(placeId)) return;
 
-    verifyVisit({
-      userId,
-      placeId: Number(activePinId),
-      lat: pin.lat,
-      lng: pin.lng,
-      file,
-    })
+    uploadPlacePhoto(placeId, file)
       .then((payload) => {
         const candidateUrl =
-          (payload.url as string | undefined) ||
           (payload.image_url as string | undefined) ||
+          (payload.url as string | undefined) ||
           (payload.photo_url as string | undefined);
         if (candidateUrl) {
           onPhotoUpload?.(activePinId, candidateUrl);
@@ -115,7 +159,9 @@ export function RouteResultScreen({
       });
   };
 
-  const activePlace = activePinId ? PLACE_IMAGES[Number(activePinId)] : null;
+  const activePlace = activePinId
+    ? selectedPlaces.find((place) => String(place.id ?? "") === activePinId)
+    : null;
 
   return (
     <div className="relative min-h-screen bg-background overflow-hidden">
@@ -172,7 +218,9 @@ export function RouteResultScreen({
         <div className="relative w-full h-full">
           <Map3D
             pins={pins}
-            route={routeCoords}
+            route={routeCoords.length >= 2 ? routeCoords : fallbackRouteCoords}
+            routeMeta={routeMeta}
+            currentLocation={currentLocation}
             onPinClick={handlePinClick}
             photosByPinId={photosByPinId}
           />
@@ -208,19 +256,20 @@ export function RouteResultScreen({
             {/* Place list */}
             <div className="flex justify-center gap-2 overflow-x-auto pb-2 scrollbar-hide">
               {pins.map((pin, i) => {
-                const place = PLACE_IMAGES[Number(pin.id)];
+                const place = selectedPlaces.find((item, idx) => String(item.id ?? idx) === pin.id);
                 return (
                   <motion.div
                     key={pin.id}
-                    className="flex items-center gap-2 bg-card/30 backdrop-blur-sm border border-muted/50 rounded-full px-3 py-1.5 shrink-0"
+                    className="flex items-center gap-2 bg-card/30 backdrop-blur-sm border border-muted/50 rounded-full px-3 py-1.5 shrink-0 cursor-pointer hover:border-primary/70 transition-colors"
                     initial={{ opacity: 0, x: -10 }}
                     animate={{ opacity: 1, x: 0 }}
                     transition={{ delay: i * 0.1 }}
+                    onClick={() => handlePinClick(pin.id)}
                   >
                     <span className="w-4 h-4 rounded-full bg-secondary text-secondary-foreground text-[10px] font-bold flex items-center justify-center">
                       {i + 1}
                     </span>
-                    <span className="text-xs text-foreground">{place?.name}</span>
+                    <span className="text-xs text-foreground">{place?.name ?? "추천 장소"}</span>
                     {i < pins.length - 1 && (
                       <ChevronRight className="w-3 h-3 text-muted-foreground" />
                     )}

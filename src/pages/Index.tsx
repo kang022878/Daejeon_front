@@ -7,17 +7,29 @@ import { MoodInputScreen } from "@/components/screens/MoodInputScreen";
 import { PlaceSelectionScreen } from "@/components/screens/PlaceSelectionScreen";
 import { RouteResultScreen } from "@/components/screens/RouteResultScreen";
 import { RouteHistoryScreen, type RouteRecord } from "@/components/screens/RouteHistoryScreen";
-import { authKakao, setAuthToken } from "@/lib/api";
+import {
+  authKakao,
+  setAuthToken,
+  type AnalyzeResponse,
+  getRouteHistory,
+  createRouteHistory,
+  deleteRouteHistory,
+} from "@/lib/api";
+import { type PlaceImage } from "@/components/3d/ImageFieldScene";
 
 // Screen state for navigation
 type AppScreen = "splash" | "onboarding" | "features" | "mood" | "places" | "main" | "route" | "result" | "history";
 
 const Index = () => {
   const [currentScreen, setCurrentScreen] = useState<AppScreen>("splash");
-  const [selectedPlaces, setSelectedPlaces] = useState<number[]>([]);
+  const [selectedPlaces, setSelectedPlaces] = useState<PlaceImage[]>([]);
   const [routes, setRoutes] = useState<RouteRecord[]>([]);
   const [activeRouteId, setActiveRouteId] = useState<string | null>(null);
   const [historyReturnScreen, setHistoryReturnScreen] = useState<AppScreen>("places");
+  const [moodImageUrl, setMoodImageUrl] = useState<string | undefined>(undefined);
+  const [recommendedPlaces, setRecommendedPlaces] = useState<PlaceImage[]>([]);
+  const [startPoint, setStartPoint] = useState<{ lat: number; lng: number } | undefined>(undefined);
+  const [routeCoords, setRouteCoords] = useState<[number, number][]>([]);
   const [userProfile, setUserProfile] = useState({
     id: 1,
     name: "카카오 사용자",
@@ -67,6 +79,18 @@ const Index = () => {
       });
   }, [userProfile.avatarUrl]);
 
+  useEffect(() => {
+    if (currentScreen !== "history") return;
+    getRouteHistory()
+      .then((payload) => {
+        if (payload.status !== "success") return;
+        setRoutes(mapHistoryRoutes(payload));
+      })
+      .catch((error) => {
+        console.error("Route history fetch failed", error);
+      });
+  }, [currentScreen]);
+
   const activeRoute = useMemo(
     () => routes.find((route) => route.id === activeRouteId) ?? null,
     [activeRouteId, routes]
@@ -84,7 +108,7 @@ const Index = () => {
     setCurrentScreen("mood");
   };
 
-  const handlePlacesComplete = (places: number[]) => {
+  const handlePlacesComplete = (places: PlaceImage[], nextRouteCoords: [number, number][]) => {
     const now = new Date();
     const routeId = `route-${now.getTime()}`;
     const timeLabel = now.toLocaleTimeString("ko-KR", {
@@ -94,6 +118,7 @@ const Index = () => {
     const dateLabel = now.toISOString().slice(0, 10);
 
     setSelectedPlaces(places);
+    setRouteCoords(nextRouteCoords);
     setActiveRouteId(routeId);
     setRoutes((prev) => [
       {
@@ -104,10 +129,29 @@ const Index = () => {
         duration: `${places.length * 30}분`,
         distance: `${(places.length * 1.2).toFixed(1)}km`,
         photosByPinId: {},
+        placeImages: places,
+        routeCoords: nextRouteCoords,
       },
       ...prev,
     ]);
     setCurrentScreen("route");
+
+    if (startPoint && places.length > 0) {
+      createRouteHistory({
+        start_lat: startPoint.lat,
+        start_lng: startPoint.lng,
+        places: places.map((place) => ({
+          id: place.id ?? null,
+          name: place.name ?? null,
+          description: place.description ?? null,
+          image_url: place.url ?? null,
+          lat: place.lat as number,
+          lng: place.lng as number,
+        })),
+      }).catch((error) => {
+        console.error("Route history save failed", error);
+      });
+    }
   };
 
   const handleLogout = () => {
@@ -119,6 +163,10 @@ const Index = () => {
       avatarUrl:
         "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='64' height='64'><rect width='64' height='64' fill='%23FEE500'/><text x='32' y='38' font-size='24' text-anchor='middle' fill='%23191919' font-family='Arial'>K</text></svg>",
     });
+    setMoodImageUrl(undefined);
+    setRecommendedPlaces([]);
+    setStartPoint(undefined);
+    setRouteCoords([]);
     setCurrentScreen("splash");
     setSelectedPlaces([]);
   };
@@ -126,6 +174,8 @@ const Index = () => {
   const handleSelectHistoryRoute = (route: RouteRecord) => {
     setSelectedPlaces(route.places);
     setActiveRouteId(route.id);
+    setRecommendedPlaces(route.placeImages ?? []);
+    setRouteCoords(route.routeCoords ?? []);
     setCurrentScreen("route");
   };
 
@@ -149,8 +199,173 @@ const Index = () => {
     );
   };
 
+  const resolveRecommendedPlaces = (payload?: AnalyzeResponse): PlaceImage[] => {
+    if (!payload) return [];
+
+    const pickFromArray = (items: unknown[]): PlaceImage[] => {
+      return items
+        .map((item, index) => {
+          if (typeof item === "string") {
+            return { url: item, name: `추천 장소 ${index + 1}` };
+          }
+          if (item && typeof item === "object") {
+            const record = item as Record<string, unknown>;
+            const url =
+              (record.url as string | undefined) ||
+              (record.image_url as string | undefined) ||
+              (record.imageUrl as string | undefined) ||
+              (record.photo_url as string | undefined) ||
+              (record.photoUrl as string | undefined);
+            if (!url) return null;
+            const name =
+              (record.name as string | undefined) ||
+              (record.title as string | undefined) ||
+              (record.place_name as string | undefined) ||
+              (record.placeName as string | undefined);
+            const lat = typeof record.lat === "number" ? (record.lat as number) : undefined;
+            const lng = typeof record.lng === "number" ? (record.lng as number) : undefined;
+            const id = typeof record.id === "number" ? (record.id as number) : undefined;
+            const description =
+              (record.description as string | undefined) ||
+              (record.desc as string | undefined);
+            const address = (record.address as string | undefined) || (record.addr as string | undefined);
+            const duration = typeof record.duration === "number" ? (record.duration as number) : undefined;
+            const transport =
+              (record.transport as string | undefined) ||
+              (record.route_type as string | undefined);
+            const moodTag =
+              (record.mood_tag as string | undefined) ||
+              (record.moodTag as string | undefined);
+            return {
+              id,
+              url,
+              name,
+              description,
+              address,
+              lat,
+              lng,
+              duration,
+              transport,
+              moodTag,
+            };
+          }
+          return null;
+        })
+        .filter((item): item is PlaceImage => Boolean(item));
+    };
+
+    const candidates = [
+      payload.data,
+      payload.places,
+      payload.recommended_places,
+      payload.recommendedPlaces,
+      payload.place_images,
+      payload.placeImages,
+      payload.images,
+      payload.results,
+      payload.data && (payload.data as Record<string, unknown>).places,
+      payload.data && (payload.data as Record<string, unknown>).recommended_places,
+      payload.data && (payload.data as Record<string, unknown>).recommendedPlaces,
+      payload.data && (payload.data as Record<string, unknown>).place_images,
+      payload.data && (payload.data as Record<string, unknown>).placeImages,
+      payload.data && (payload.data as Record<string, unknown>).images,
+      payload.data && (payload.data as Record<string, unknown>).results,
+      payload.result && (payload.result as Record<string, unknown>).places,
+      payload.result && (payload.result as Record<string, unknown>).recommended_places,
+      payload.result && (payload.result as Record<string, unknown>).recommendedPlaces,
+      payload.result && (payload.result as Record<string, unknown>).place_images,
+      payload.result && (payload.result as Record<string, unknown>).placeImages,
+      payload.result && (payload.result as Record<string, unknown>).images,
+      payload.result && (payload.result as Record<string, unknown>).results,
+    ];
+
+    for (const candidate of candidates) {
+      if (Array.isArray(candidate)) {
+        const resolved = pickFromArray(candidate);
+        if (resolved.length > 0) return resolved;
+      }
+    }
+
+    return [];
+  };
+
+  const resolveStartPoint = (payload?: AnalyzeResponse) => {
+    if (!payload) return undefined;
+    const direct = payload.start_point as { lat?: number; lng?: number } | undefined;
+    if (direct && typeof direct.lat === "number" && typeof direct.lng === "number") {
+      return { lat: direct.lat, lng: direct.lng };
+    }
+    const alt = payload.startPoint as { lat?: number; lng?: number } | undefined;
+    if (alt && typeof alt.lat === "number" && typeof alt.lng === "number") {
+      return { lat: alt.lat, lng: alt.lng };
+    }
+    return undefined;
+  };
+
+  const normalizeHistoryPlaces = (items: { places?: any[] } | undefined): PlaceImage[] => {
+    if (!items?.places) return [];
+    return items.places
+      .slice()
+      .sort((a, b) => (a?.order_index ?? 0) - (b?.order_index ?? 0))
+      .map((place) => ({
+        id: place?.id ?? undefined,
+        name: place?.name ?? undefined,
+        description: place?.description ?? undefined,
+        url: place?.image_url ?? "",
+        lat: place?.lat,
+        lng: place?.lng,
+      }));
+  };
+
+  const mapHistoryRoutes = (payload: Awaited<ReturnType<typeof getRouteHistory>>) => {
+    return payload.routes.map((route) => {
+      const createdAt = new Date(route.created_at);
+      const dateLabel = createdAt.toISOString().slice(0, 10);
+      const timeLabel = createdAt.toLocaleTimeString("ko-KR", {
+        hour: "2-digit",
+        minute: "2-digit",
+      });
+      const places = normalizeHistoryPlaces(route).filter(
+        (place) =>
+          typeof place.lat === "number" &&
+          typeof place.lng === "number" &&
+          typeof place.url === "string" &&
+          place.url.length > 0
+      );
+      const routeCoords: [number, number][] = route.start_point
+        ? [[route.start_point.lng, route.start_point.lat], ...places.map((p) => [p.lng as number, p.lat as number])]
+        : places.map((p) => [p.lng as number, p.lat as number]);
+
+      return {
+        id: `route-${route.route_id}`,
+        dbRouteId: route.route_id,
+        date: dateLabel,
+        time: timeLabel,
+        places,
+        duration: `${places.length * 30}분`,
+        distance: `${(places.length * 1.2).toFixed(1)}km`,
+        photosByPinId: {},
+        placeImages: places,
+        routeCoords,
+      };
+    });
+  };
+
   const handleDeleteRoute = (routeId: string) => {
-    setRoutes((prev) => prev.filter((route) => route.id !== routeId));
+    const target = routes.find((route) => route.id === routeId);
+    const dbRouteId = target?.dbRouteId;
+    if (!dbRouteId) {
+      setRoutes((prev) => prev.filter((route) => route.id !== routeId));
+      return;
+    }
+
+    deleteRouteHistory(dbRouteId)
+      .then(() => {
+        setRoutes((prev) => prev.filter((route) => route.id !== routeId));
+      })
+      .catch((error) => {
+        console.error("Route history delete failed", error);
+      });
   };
 
   return (
@@ -200,7 +415,15 @@ const Index = () => {
             exit={{ opacity: 0 }}
             transition={{ duration: 0.8 }}
           >
-            <MoodInputScreen onComplete={() => setCurrentScreen("places")} />
+            <MoodInputScreen
+              onComplete={(payload) => {
+                setMoodImageUrl(payload?.moodImageUrl);
+                setRecommendedPlaces(resolveRecommendedPlaces(payload?.raw));
+                setStartPoint(resolveStartPoint(payload?.raw));
+                setRouteCoords([]);
+                setCurrentScreen("places");
+              }}
+            />
           </motion.div>
         )}
 
@@ -213,13 +436,24 @@ const Index = () => {
             transition={{ duration: 0.8 }}
           >
             <PlaceSelectionScreen 
-              onComplete={handlePlacesComplete} 
-              onReselect={() => setCurrentScreen("mood")}
+              onComplete={({ selectedPlaces, routeCoords }) => {
+                handlePlacesComplete(selectedPlaces, routeCoords);
+              }}
+              onReselect={() => {
+                setMoodImageUrl(undefined);
+                setRecommendedPlaces([]);
+                setStartPoint(undefined);
+                setRouteCoords([]);
+                setCurrentScreen("mood");
+              }}
               onViewHistory={() => {
                 setHistoryReturnScreen("places");
                 setCurrentScreen("history");
               }}
               onLogout={handleLogout}
+              moodImageUrl={moodImageUrl}
+              places={recommendedPlaces}
+              startPoint={startPoint}
             />
           </motion.div>
         )}
@@ -237,6 +471,10 @@ const Index = () => {
               onReselect={() => setCurrentScreen("places")}
               onReselectMood={() => {
                 setSelectedPlaces([]);
+                setMoodImageUrl(undefined);
+                setRecommendedPlaces([]);
+                setStartPoint(undefined);
+                setRouteCoords([]);
                 setCurrentScreen("mood");
               }}
               onViewHistory={() => {
@@ -248,6 +486,7 @@ const Index = () => {
               userProfile={{ name: userProfile.name, avatarUrl: userProfile.avatarUrl }}
               photosByPinId={activeRoute?.photosByPinId}
               onPhotoUpload={handleUpdateRoutePhoto}
+              routeCoords={routeCoords}
             />
           </motion.div>
         )}

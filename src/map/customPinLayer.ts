@@ -11,6 +11,14 @@ export function createPinsLayer(pins: Pin[]): mapboxgl.CustomLayerInterface {
   let mapInstance: mapboxgl.Map;
   const DESIRED_PIN_HEIGHT_METERS = 35;
   const MIN_BOUNDS_EPS = 1e-6;
+  const pinEntries: Array<{
+    object: THREE.Object3D;
+    baseScale: number;
+    baseHeight: number;
+    baseX: number;
+    baseY: number;
+    baseZ: number;
+  }> = [];
 
   const applyPinVisualOverrides = (object: THREE.Object3D) => {
     object.traverse((child) => {
@@ -55,6 +63,14 @@ export function createPinsLayer(pins: Pin[]): mapboxgl.CustomLayerInterface {
     material.depthTest = false;
     material.depthWrite = false;
     scene.add(mesh);
+    pinEntries.push({
+      object: mesh,
+      baseScale: scaleScalar,
+      baseHeight: 1.2,
+      baseX: mc.x,
+      baseY: mc.y,
+      baseZ: mc.z,
+    });
   };
 
   return {
@@ -126,6 +142,14 @@ export function createPinsLayer(pins: Pin[]): mapboxgl.CustomLayerInterface {
           console.log("[pin.glb] rotations", group.rotation);
           applyPinVisualOverrides(group);
           scene.add(group);
+          pinEntries.push({
+            object: group,
+            baseScale: scaleScalar,
+            baseHeight: size.y,
+            baseX: mc.x,
+            baseY: mc.y,
+            baseZ: mc.z,
+          });
         }
         mapInstance.triggerRepaint();
       }, undefined, (error) => {
@@ -138,6 +162,19 @@ export function createPinsLayer(pins: Pin[]): mapboxgl.CustomLayerInterface {
     render(gl, matrix) {
       const m = new THREE.Matrix4().fromArray(matrix as any);
       camera.projectionMatrix = m;
+
+      const zoom = mapInstance.getZoom();
+      // Keep pins readable across zoom levels (bigger overall, gentler scaling).
+      const zoomFactor = THREE.MathUtils.clamp(2.4 - (zoom - 12) * 0.08, 1.4, 3.0);
+      pinEntries.forEach((entry) => {
+        const scale = entry.baseScale * zoomFactor;
+        entry.object.scale.setScalar(scale);
+        entry.object.position.set(
+          entry.baseX,
+          entry.baseY,
+          entry.baseZ + (entry.baseHeight * scale) / 2
+        );
+      });
 
       renderer.resetState();
       renderer.clearDepth();

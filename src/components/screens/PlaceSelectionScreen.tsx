@@ -1,30 +1,47 @@
-import { useState, Suspense } from "react";
+import { useMemo, useState, Suspense } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { SpaceParticles } from "@/components/SpaceParticles";
-import { ImageFieldScene, PLACE_IMAGES } from "@/components/3d/ImageFieldScene";
+import { ImageFieldScene, type PlaceImage } from "@/components/3d/ImageFieldScene";
 import { PlanetMenu } from "@/components/3d/PlanetMenu";
 import { Button } from "@/components/ui/button";
 import { ChevronRight, Loader2, X } from "lucide-react";
 import { useFeedback } from "@/hooks/useFeedback";
+import { calculateRoute } from "@/lib/api";
 
 interface PlaceSelectionScreenProps {
-  onComplete: (selectedPlaces: number[]) => void;
+  onComplete: (payload: { selectedPlaces: PlaceImage[]; routeCoords: [number, number][] }) => void;
   onReselect?: () => void;
   onViewHistory?: () => void;
   onLogout?: () => void;
+  moodImageUrl?: string;
+  places: PlaceImage[];
+  startPoint?: { lat: number; lng: number };
 }
 
 export function PlaceSelectionScreen({ 
   onComplete, 
   onReselect, 
   onViewHistory,
-  onLogout 
+  onLogout,
+  moodImageUrl,
+  places,
+  startPoint,
 }: PlaceSelectionScreenProps) {
   const [selectedPlaces, setSelectedPlaces] = useState<number[]>([]);
   const [isGenerating, setIsGenerating] = useState(false);
   const { onSelect, onDeselect, onSuccess, onClick } = useFeedback();
+  const placeById = useMemo(() => {
+    const map = new Map<number, PlaceImage>();
+    places.forEach((place) => {
+      if (typeof place.id === "number") {
+        map.set(place.id, place);
+      }
+    });
+    return map;
+  }, [places]);
 
   const handlePlaceClick = (index: number) => {
+    if (!places[index]) return;
     setSelectedPlaces(prev => {
       if (prev.includes(index)) {
         onDeselect();
@@ -49,11 +66,64 @@ export function PlaceSelectionScreen({
     
     onClick();
     setIsGenerating(true);
-    // Simulate route generation
-    await new Promise(resolve => setTimeout(resolve, 2500));
-    setIsGenerating(false);
-    onSuccess();
-    onComplete(selectedPlaces);
+    const selectedItems = selectedPlaces
+      .map((index) => places[index])
+      .filter((place): place is PlaceImage => Boolean(place));
+
+    try {
+      if (!startPoint || selectedItems.length === 0) {
+        const routeCoords = selectedItems
+          .filter((place) => typeof place.lat === "number" && typeof place.lng === "number")
+          .map((place) => [place.lng as number, place.lat as number] as [number, number]);
+        setIsGenerating(false);
+        onSuccess();
+        onComplete({ selectedPlaces: selectedItems, routeCoords });
+        return;
+      }
+
+      const routePayload = {
+        start_lat: startPoint.lat,
+        start_lng: startPoint.lng,
+        places: selectedItems.map((place) => ({
+          id: place.id ?? null,
+          name: place.name ?? null,
+          lat: place.lat as number,
+          lng: place.lng as number,
+        })),
+      };
+
+      const response = await calculateRoute(routePayload);
+      const ordered = (response.data ?? [])
+        .map((item) => {
+          const base = typeof item.id === "number" ? placeById.get(item.id) : undefined;
+          return {
+            ...(base ?? {}),
+            id: item.id ?? base?.id,
+            name: item.name ?? base?.name,
+            lat: item.lat ?? base?.lat,
+            lng: item.lng ?? base?.lng,
+            duration: (item as any).duration ?? base?.duration,
+            transport: (item as any).transport ?? base?.transport,
+          } as PlaceImage;
+        })
+        .filter((place) => typeof place.lat === "number" && typeof place.lng === "number");
+
+      const routeCoords: [number, number][] = [
+        [startPoint.lng, startPoint.lat],
+        ...ordered.map((place) => [place.lng as number, place.lat as number]),
+      ];
+
+      setIsGenerating(false);
+      onSuccess();
+      onComplete({ selectedPlaces: ordered, routeCoords });
+    } catch (error) {
+      console.error("Route generation failed", error);
+      const fallbackCoords = selectedItems
+        .filter((place) => typeof place.lat === "number" && typeof place.lng === "number")
+        .map((place) => [place.lng as number, place.lat as number] as [number, number]);
+      setIsGenerating(false);
+      onComplete({ selectedPlaces: selectedItems, routeCoords: fallbackCoords });
+    }
   };
 
   return (
@@ -77,6 +147,23 @@ export function PlaceSelectionScreen({
           <p className="text-subtitle text-sm text-muted-foreground mt-2">
             2~5개의 장소를 선택하여 루트를 만들어보세요
           </p>
+          {moodImageUrl && (
+            <div className="mt-4 flex items-center justify-center">
+              <div className="flex items-center gap-3 rounded-full border border-muted/50 bg-card/40 px-4 py-2 backdrop-blur-sm">
+                <img
+                  src={moodImageUrl}
+                  alt="AI mood"
+                  className="h-10 w-10 rounded-full object-cover border border-muted"
+                />
+                <div className="text-left">
+                  <p className="text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
+                    AI MOOD PICK
+                  </p>
+                  <p className="text-xs text-foreground">무드 기반 추천 이미지</p>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Planet Menu - top right */}
@@ -109,6 +196,7 @@ export function PlaceSelectionScreen({
           <ImageFieldScene
             selectedPlaces={selectedPlaces}
             onPlaceClick={handlePlaceClick}
+            places={places}
           />
         </Suspense>
       </motion.div>
@@ -134,8 +222,8 @@ export function PlaceSelectionScreen({
                 >
                   <div className="w-14 h-14 rounded-lg overflow-hidden border-2 border-primary glow-blue-box">
                     <img 
-                      src={PLACE_IMAGES[placeIndex].url} 
-                      alt={PLACE_IMAGES[placeIndex].name}
+                      src={places[placeIndex]?.url} 
+                      alt={places[placeIndex]?.name ?? `place-${placeIndex}`}
                       className="w-full h-full object-cover"
                     />
                   </div>
@@ -146,7 +234,7 @@ export function PlaceSelectionScreen({
                     <X className="w-3 h-3 text-muted-foreground" />
                   </button>
                   <span className="absolute -bottom-5 left-1/2 -translate-x-1/2 text-[10px] text-muted-foreground whitespace-nowrap">
-                    {PLACE_IMAGES[placeIndex].name}
+                    {places[placeIndex]?.name ?? "추천 장소"}
                   </span>
                 </motion.div>
               ))}

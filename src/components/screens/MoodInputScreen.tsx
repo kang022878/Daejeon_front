@@ -1,13 +1,13 @@
-import { useRef, useState, Suspense, useEffect } from "react";
+import { useRef, useState, Suspense } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { SpaceParticles } from "@/components/SpaceParticles";
 import { OrbitGalleryScene } from "@/components/3d/OrbitGalleryScene";
 import { Button } from "@/components/ui/button";
 import { ChevronRight, Loader2, Upload, X } from "lucide-react";
-import { analyzeImages } from "@/lib/api";
+import { analyzeImages, type AnalyzeResponse } from "@/lib/api";
 
 interface MoodInputScreenProps {
-  onComplete: () => void;
+  onComplete: (payload?: { moodImageUrl?: string; raw?: AnalyzeResponse }) => void;
 }
 
 export function MoodInputScreen({ onComplete }: MoodInputScreenProps) {
@@ -15,7 +15,6 @@ export function MoodInputScreen({ onComplete }: MoodInputScreenProps) {
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [images, setImages] = useState<{ url: string; file: File }[]>([]);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
-  const wasEmptyRef = useRef(true);
 
   const defaultMoodImages = [
     "/moods/mood-1.png",
@@ -24,15 +23,7 @@ export function MoodInputScreen({ onComplete }: MoodInputScreenProps) {
     "/moods/mood-4.png",
     "/moods/mood-5.png",
   ];
-  const galleryImages = images.length > 0 ? images.map((item) => item.url) : defaultMoodImages;
-
-  useEffect(() => {
-    const isEmpty = images.length === 0;
-    if (wasEmptyRef.current !== isEmpty) {
-      setSelectedImages([]);
-    }
-    wasEmptyRef.current = isEmpty;
-  }, [images.length]);
+  const galleryImages = [...defaultMoodImages, ...images.map((item) => item.url)];
 
   const handleImageClick = (index: number) => {
     setSelectedImages(prev => {
@@ -46,25 +37,81 @@ export function MoodInputScreen({ onComplete }: MoodInputScreenProps) {
     });
   };
 
+  const resolveMoodImageUrl = (payload: AnalyzeResponse) => {
+    const candidateKeys = [
+      "image_url",
+      "imageUrl",
+      "selected_image_url",
+      "selectedImageUrl",
+      "recommended_image_url",
+      "recommendedImageUrl",
+      "result_image_url",
+      "resultImageUrl",
+      "url",
+    ] as const;
+
+    const findUrl = (obj?: Record<string, unknown>) => {
+      if (!obj) return undefined;
+      for (const key of candidateKeys) {
+        const value = obj[key];
+        if (typeof value === "string" && value.length > 0) return value;
+      }
+      return undefined;
+    };
+
+    const direct = findUrl(payload);
+    if (direct) return direct;
+
+    const data = payload.data as Record<string, unknown> | undefined;
+    const result = payload.result as Record<string, unknown> | undefined;
+    return findUrl(data) || findUrl(result);
+  };
+
   const handleAnalyze = async () => {
     if (selectedImages.length === 0) return;
     
     setIsAnalyzing(true);
     try {
-      const selectedFiles = selectedImages
-        .map((index) => images[index]?.file)
-        .filter((file): file is File => Boolean(file));
+      const galleryItems = [
+        ...defaultMoodImages.map((url, index) => ({
+          url,
+          filename: url.split("/").pop() || `mood-${index + 1}.png`,
+          file: undefined as File | undefined,
+        })),
+        ...images.map((item, index) => ({
+          url: item.url,
+          filename: item.file?.name || `upload-${index + 1}`,
+          file: item.file,
+        })),
+      ];
+
+      const selectedItems = selectedImages
+        .map((index) => galleryItems[index])
+        .filter((item): item is (typeof galleryItems)[number] => Boolean(item));
+
+      const selectedFiles = await Promise.all(
+        selectedItems.map(async (item, index) => {
+          if (item.file) return item.file;
+          const response = await fetch(item.url);
+          const blob = await response.blob();
+          const filename = item.filename || `selected-${index + 1}.png`;
+          return new File([blob], filename, { type: blob.type || "image/png" });
+        })
+      );
 
       if (selectedFiles.length > 0) {
-        await analyzeImages(selectedFiles);
+        const payload = await analyzeImages(selectedFiles);
+        const moodImageUrl = resolveMoodImageUrl(payload);
+        onComplete({ moodImageUrl, raw: payload });
       } else {
         await new Promise(resolve => setTimeout(resolve, 2000));
+        onComplete();
       }
     } catch (error) {
       console.error("Image analyze failed", error);
+      onComplete();
     }
     setIsAnalyzing(false);
-    onComplete();
   };
 
   const handleUploadClick = () => {
@@ -92,6 +139,7 @@ export function MoodInputScreen({ onComplete }: MoodInputScreenProps) {
         .map((index) => (index > indexToRemove ? index - 1 : index))
     );
   };
+
 
   return (
     <div className="relative min-h-screen bg-background overflow-hidden">

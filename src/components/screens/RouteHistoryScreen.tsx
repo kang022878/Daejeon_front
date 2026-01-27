@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { SpaceParticles } from "@/components/SpaceParticles";
 import { Button } from "@/components/ui/button";
 import { ChevronLeft, ChevronRight, MapPin, Clock, Calendar, Navigation, Trash2, History as HistoryIcon } from "lucide-react";
-import { PLACE_IMAGES } from "@/components/3d/ImageFieldScene";
+import { type PlaceImage } from "@/components/3d/ImageFieldScene";
 import { useFeedback } from "@/hooks/useFeedback";
 
 interface RouteHistoryScreenProps {
@@ -15,12 +15,15 @@ interface RouteHistoryScreenProps {
 
 export type RouteRecord = {
   id: string;
+  dbRouteId?: number;
   date: string;
   time: string;
-  places: number[];
+  places: PlaceImage[];
   duration: string;
   distance: string;
   photosByPinId?: Record<string, string>;
+  placeImages?: PlaceImage[];
+  routeCoords?: [number, number][];
 };
 
 export function RouteHistoryScreen({
@@ -143,18 +146,22 @@ export function RouteHistoryScreen({
 
                 {/* Places */}
                 <div className="flex items-center gap-2 mb-3 overflow-x-auto scrollbar-hide">
-                  {route.places.map((placeIndex, i) => {
-                    const place = PLACE_IMAGES[placeIndex];
-                    const userPhoto = route.photosByPinId?.[String(placeIndex)];
+                  {route.places.map((place, i) => {
+                    const placeId = place.id ?? i;
+                    const userPhoto = route.photosByPinId?.[String(placeId)];
                     return (
                       <div key={i} className="flex items-center shrink-0">
                         <div className="relative">
                           <div className="w-10 h-10 rounded-lg overflow-hidden border border-muted">
-                            <img
-                              src={userPhoto || place?.url}
-                              alt={place?.name}
-                              className="w-full h-full object-cover"
-                            />
+                            {userPhoto || place?.url ? (
+                              <img
+                                src={userPhoto || place?.url}
+                                alt={place?.name ?? `place-${placeId}`}
+                                className="w-full h-full object-cover"
+                              />
+                            ) : (
+                              <div className="w-full h-full bg-muted/40" />
+                            )}
                           </div>
                           <span className="absolute -top-1 -left-1 w-4 h-4 bg-secondary text-secondary-foreground text-[10px] font-bold rounded-full flex items-center justify-center">
                             {i + 1}
