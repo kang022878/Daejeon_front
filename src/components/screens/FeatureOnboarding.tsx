@@ -44,6 +44,21 @@ export function FeatureOnboarding({ onComplete }: FeatureOnboardingProps) {
   const [currentSlide, setCurrentSlide] = useState(0);
   const [showLogin, setShowLogin] = useState(false);
 
+  const getKakaoAuthUrl = () => {
+    const restKey = import.meta.env.VITE_KAKAO_REST_API_KEY as string | undefined;
+    const redirectUri = (import.meta.env.VITE_KAKAO_REDIRECT_URI as string | undefined) || `${window.location.origin}/oauth`;
+    if (!restKey) {
+      console.error("Missing VITE_KAKAO_REST_API_KEY");
+      return null;
+    }
+    const params = new URLSearchParams({
+      client_id: restKey,
+      redirect_uri: redirectUri,
+      response_type: "code",
+    });
+    return `https://kauth.kakao.com/oauth/authorize?${params.toString()}`;
+  };
+
   const handleNext = () => {
     if (currentSlide < slides.length - 1) {
       setCurrentSlide(currentSlide + 1);
@@ -53,8 +68,9 @@ export function FeatureOnboarding({ onComplete }: FeatureOnboardingProps) {
   };
 
   const handleKakaoLogin = () => {
-    // Mock login - proceed to next screen
-    onComplete();
+    const authUrl = getKakaoAuthUrl();
+    if (!authUrl) return;
+    window.location.href = authUrl;
   };
 
   const handleSkip = () => {

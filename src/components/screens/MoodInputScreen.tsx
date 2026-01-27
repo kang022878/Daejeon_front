@@ -1,9 +1,10 @@
-import { useState, Suspense } from "react";
+import { useRef, useState, Suspense, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { SpaceParticles } from "@/components/SpaceParticles";
 import { OrbitGalleryScene } from "@/components/3d/OrbitGalleryScene";
 import { Button } from "@/components/ui/button";
-import { ChevronRight, Loader2, Upload } from "lucide-react";
+import { ChevronRight, Loader2, Upload, X } from "lucide-react";
+import { analyzeImages } from "@/lib/api";
 
 interface MoodInputScreenProps {
   onComplete: () => void;
@@ -12,6 +13,26 @@ interface MoodInputScreenProps {
 export function MoodInputScreen({ onComplete }: MoodInputScreenProps) {
   const [selectedImages, setSelectedImages] = useState<number[]>([]);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const [images, setImages] = useState<{ url: string; file: File }[]>([]);
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const wasEmptyRef = useRef(true);
+
+  const defaultMoodImages = [
+    "/moods/mood-1.png",
+    "/moods/mood-2.png",
+    "/moods/mood-3.png",
+    "/moods/mood-4.png",
+    "/moods/mood-5.png",
+  ];
+  const galleryImages = images.length > 0 ? images.map((item) => item.url) : defaultMoodImages;
+
+  useEffect(() => {
+    const isEmpty = images.length === 0;
+    if (wasEmptyRef.current !== isEmpty) {
+      setSelectedImages([]);
+    }
+    wasEmptyRef.current = isEmpty;
+  }, [images.length]);
 
   const handleImageClick = (index: number) => {
     setSelectedImages(prev => {
@@ -29,10 +50,47 @@ export function MoodInputScreen({ onComplete }: MoodInputScreenProps) {
     if (selectedImages.length === 0) return;
     
     setIsAnalyzing(true);
-    // Simulate AI analysis delay
-    await new Promise(resolve => setTimeout(resolve, 2000));
+    try {
+      const selectedFiles = selectedImages
+        .map((index) => images[index]?.file)
+        .filter((file): file is File => Boolean(file));
+
+      if (selectedFiles.length > 0) {
+        await analyzeImages(selectedFiles);
+      } else {
+        await new Promise(resolve => setTimeout(resolve, 2000));
+      }
+    } catch (error) {
+      console.error("Image analyze failed", error);
+    }
     setIsAnalyzing(false);
     onComplete();
+  };
+
+  const handleUploadClick = () => {
+    fileInputRef.current?.click();
+  };
+
+  const handleUploadChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(event.target.files ?? []);
+    if (files.length === 0) return;
+
+    const nextImages = files.map((file) => ({
+      file,
+      url: URL.createObjectURL(file),
+    }));
+
+    setImages((prev) => [...prev, ...nextImages]);
+    event.target.value = "";
+  };
+
+  const handleRemoveImage = (indexToRemove: number) => {
+    setImages((prev) => prev.filter((_, index) => index !== indexToRemove));
+    setSelectedImages((prev) =>
+      prev
+        .filter((index) => index !== indexToRemove)
+        .map((index) => (index > indexToRemove ? index - 1 : index))
+    );
   };
 
   return (
@@ -75,6 +133,7 @@ export function MoodInputScreen({ onComplete }: MoodInputScreenProps) {
             selectedImages={selectedImages}
             onImageClick={handleImageClick}
             showCenter={false}
+            images={galleryImages}
           />
         </Suspense>
       </motion.div>
@@ -114,14 +173,42 @@ export function MoodInputScreen({ onComplete }: MoodInputScreenProps) {
         transition={{ delay: 0.8, duration: 0.8 }}
       >
         <div className="px-6 pb-8 space-y-4">
+          {images.length > 0 && (
+            <div className="rounded-xl border border-muted/40 bg-card/40 backdrop-blur-sm p-3">
+              <p className="text-xs text-muted-foreground mb-2">업로드한 사진</p>
+              <div className="flex gap-2 overflow-x-auto scrollbar-hide">
+                {images.map((item, index) => (
+                  <div key={item.url} className="relative w-14 h-14 rounded-lg overflow-hidden border border-muted/50 shrink-0">
+                    <img src={item.url} alt={`upload-${index}`} className="w-full h-full object-cover" />
+                    <button
+                      type="button"
+                      onClick={() => handleRemoveImage(index)}
+                      className="absolute -top-1 -right-1 w-5 h-5 rounded-full bg-background/80 border border-muted flex items-center justify-center hover:bg-background"
+                    >
+                      <X className="w-3 h-3 text-muted-foreground" />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
           {/* Upload custom photo button */}
           <Button
             variant="outline"
             className="w-full h-12 border-muted-foreground/30 text-muted-foreground hover:border-primary hover:text-primary transition-all duration-300"
+            onClick={handleUploadClick}
           >
             <Upload className="w-4 h-4 mr-2" />
             <span className="text-elegant text-xs">내 사진 업로드</span>
           </Button>
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="image/*"
+            multiple
+            className="hidden"
+            onChange={handleUploadChange}
+          />
 
           {/* Analyze button */}
           <Button
@@ -143,7 +230,7 @@ export function MoodInputScreen({ onComplete }: MoodInputScreenProps) {
 
           {selectedImages.length === 0 && (
             <p className="text-center text-xs text-muted-foreground">
-              회전하는 이미지를 탭하여 선택하세요
+              원하는 이미지를 탭하여 선택하세요
             </p>
           )}
         </div>

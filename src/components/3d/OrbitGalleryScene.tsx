@@ -2,21 +2,10 @@ import { Canvas, useThree } from "@react-three/fiber";
 import { OrbitingImage } from "./OrbitingImage";
 import { Environment, Float, Image } from "@react-three/drei";
 
-// Placeholder mood images - these would be replaced with actual user photos
-const MOOD_IMAGES = [
-  "https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=400&h=400&fit=crop",
-  "https://images.unsplash.com/photo-1469474968028-56623f02e42e?w=400&h=400&fit=crop",
-  "https://images.unsplash.com/photo-1447752875215-b2761acb3c5d?w=400&h=400&fit=crop",
-  "https://images.unsplash.com/photo-1433086966358-54859d0ed716?w=400&h=400&fit=crop",
-  "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=400&h=400&fit=crop",
-  "https://images.unsplash.com/photo-1518495973542-4542c06a5843?w=400&h=400&fit=crop",
-  "https://images.unsplash.com/photo-1470071459604-3b5ec3a7fe05?w=400&h=400&fit=crop",
-  "https://images.unsplash.com/photo-1426604966848-d7adac402bff?w=400&h=400&fit=crop",
-];
-
 interface OrbitGallerySceneProps {
   selectedImages: number[];
   onImageClick: (index: number) => void;
+  images: string[];
   centerImageSrc?: string;
   showCenter?: boolean;
 }
@@ -24,6 +13,7 @@ interface OrbitGallerySceneProps {
 function Scene({
   selectedImages,
   onImageClick,
+  images,
   centerImageSrc,
   showCenter,
 }: OrbitGallerySceneProps) {
@@ -38,12 +28,12 @@ function Scene({
       <pointLight position={[-10, -10, -10]} intensity={0.5} color="#00bfff" />
       
       {/* Orbiting images */}
-      {MOOD_IMAGES.map((url, index) => (
+      {images.map((url, index) => (
         <OrbitingImage
           key={index}
           url={url}
           index={index}
-          total={MOOD_IMAGES.length}
+          total={images.length}
           radius={orbitRadius}
           rotationSpeed={0.15}
           isSelected={selectedImages.includes(index)}
@@ -88,6 +78,7 @@ function Scene({
 export function OrbitGalleryScene({
   selectedImages,
   onImageClick,
+  images,
   centerImageSrc,
   showCenter,
 }: OrbitGallerySceneProps) {
@@ -108,6 +99,7 @@ export function OrbitGalleryScene({
       <Scene
         selectedImages={selectedImages}
         onImageClick={onImageClick}
+        images={images}
         centerImageSrc={centerImageSrc}
         showCenter={showCenter}
       />

@@ -8,53 +8,36 @@ import { useFeedback } from "@/hooks/useFeedback";
 
 interface RouteHistoryScreenProps {
   onBack: () => void;
-  onSelectRoute: (routeId: string) => void;
+  onSelectRoute: (route: RouteRecord) => void;
+  routes: RouteRecord[];
+  onDeleteRoute?: (routeId: string) => void;
 }
 
-// Mock route history data
-const MOCK_ROUTES = [
-  {
-    id: "route-1",
-    date: "2026-01-26",
-    time: "14:30",
-    places: [0, 2, 5, 7],
-    duration: "2시간 30분",
-    distance: "4.8km",
-  },
-  {
-    id: "route-2",
-    date: "2026-01-25",
-    time: "10:15",
-    places: [1, 3, 6],
-    duration: "1시간 45분",
-    distance: "3.2km",
-  },
-  {
-    id: "route-3",
-    date: "2026-01-24",
-    time: "16:00",
-    places: [2, 4, 8, 9],
-    duration: "3시간",
-    distance: "5.5km",
-  },
-  {
-    id: "route-4",
-    date: "2026-01-22",
-    time: "11:00",
-    places: [0, 1, 3, 5, 7],
-    duration: "4시간",
-    distance: "7.2km",
-  },
-];
+export type RouteRecord = {
+  id: string;
+  date: string;
+  time: string;
+  places: number[];
+  duration: string;
+  distance: string;
+  photosByPinId?: Record<string, string>;
+};
 
-export function RouteHistoryScreen({ onBack, onSelectRoute }: RouteHistoryScreenProps) {
-  const [routes, setRoutes] = useState(MOCK_ROUTES);
+export function RouteHistoryScreen({
+  onBack,
+  onSelectRoute,
+  routes,
+  onDeleteRoute,
+}: RouteHistoryScreenProps) {
   const [selectedRouteId, setSelectedRouteId] = useState<string | null>(null);
   const { onClick, onSelect, onDeselect } = useFeedback();
 
   const handleDeleteRoute = (routeId: string) => {
     onDeselect();
-    setRoutes(prev => prev.filter(r => r.id !== routeId));
+    if (selectedRouteId === routeId) {
+      setSelectedRouteId(null);
+    }
+    onDeleteRoute?.(routeId);
   };
 
   const handleSelectRoute = (routeId: string) => {
@@ -63,9 +46,10 @@ export function RouteHistoryScreen({ onBack, onSelectRoute }: RouteHistoryScreen
   };
 
   const handleNavigate = () => {
-    if (selectedRouteId) {
+    const selectedRoute = routes.find((route) => route.id === selectedRouteId);
+    if (selectedRoute) {
       onClick();
-      onSelectRoute(selectedRouteId);
+      onSelectRoute(selectedRoute);
     }
   };
 
@@ -161,12 +145,13 @@ export function RouteHistoryScreen({ onBack, onSelectRoute }: RouteHistoryScreen
                 <div className="flex items-center gap-2 mb-3 overflow-x-auto scrollbar-hide">
                   {route.places.map((placeIndex, i) => {
                     const place = PLACE_IMAGES[placeIndex];
+                    const userPhoto = route.photosByPinId?.[String(placeIndex)];
                     return (
                       <div key={i} className="flex items-center shrink-0">
                         <div className="relative">
                           <div className="w-10 h-10 rounded-lg overflow-hidden border border-muted">
                             <img
-                              src={place?.url}
+                              src={userPhoto || place?.url}
                               alt={place?.name}
                               className="w-full h-full object-cover"
                             />
