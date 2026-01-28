@@ -13,6 +13,8 @@ export type PlaceImage = {
   lng?: number;
   duration?: number;
   transport?: string;
+  walkDuration?: number;
+  driveDuration?: number;
   moodTag?: string;
 };
 

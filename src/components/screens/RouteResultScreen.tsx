@@ -77,9 +77,24 @@ export function RouteResultScreen({
       selectedPlaces.map((place) => ({
         duration: place.duration,
         transport: place.transport,
+        walkDuration: place.walkDuration,
+        driveDuration: place.driveDuration,
       })),
     [selectedPlaces]
   );
+
+  const buildRouteBadgeLabel = (meta?: { duration?: number; transport?: string; walkDuration?: number; driveDuration?: number }) => {
+    if (!meta) return null;
+    const labelParts: string[] = [];
+    if (typeof meta.walkDuration === "number") labelParts.push(`도보 ${meta.walkDuration}분`);
+    if (typeof meta.driveDuration === "number") labelParts.push(`차로 ${meta.driveDuration}분`);
+    if (labelParts.length === 0) {
+      if (meta.transport) labelParts.push(meta.transport);
+      if (typeof meta.duration === "number") labelParts.push(`${meta.duration}분`);
+    }
+    if (labelParts.length === 0) return null;
+    return labelParts.join(" · ");
+  };
 
   useEffect(() => {
     const timer = setTimeout(() => setShowDetails(true), 900);
@@ -254,26 +269,32 @@ export function RouteResultScreen({
             </div>
 
             {/* Place list */}
-            <div className="flex justify-center gap-2 overflow-x-auto pb-2 scrollbar-hide">
+            <div className="flex items-center justify-center gap-2 overflow-x-auto pb-2 scrollbar-hide">
               {pins.map((pin, i) => {
                 const place = selectedPlaces.find((item, idx) => String(item.id ?? idx) === pin.id);
+                const hasStartLeg = routeCoords.length === pins.length + 1;
+                const metaIndex = hasStartLeg ? i + 1 : i;
+                const badgeLabel = buildRouteBadgeLabel(routeMeta[metaIndex]);
                 return (
-                  <motion.div
-                    key={pin.id}
-                    className="flex items-center gap-2 bg-card/30 backdrop-blur-sm border border-muted/50 rounded-full px-3 py-1.5 shrink-0 cursor-pointer hover:border-primary/70 transition-colors"
-                    initial={{ opacity: 0, x: -10 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    transition={{ delay: i * 0.1 }}
-                    onClick={() => handlePinClick(pin.id)}
-                  >
-                    <span className="w-4 h-4 rounded-full bg-secondary text-secondary-foreground text-[10px] font-bold flex items-center justify-center">
-                      {i + 1}
-                    </span>
-                    <span className="text-xs text-foreground">{place?.name ?? "추천 장소"}</span>
-                    {i < pins.length - 1 && (
-                      <ChevronRight className="w-3 h-3 text-muted-foreground" />
+                  <div key={pin.id} className="flex items-center gap-2 shrink-0">
+                    <motion.div
+                      className="flex items-center gap-2 bg-card/30 backdrop-blur-sm border border-muted/50 rounded-full px-3 py-1.5 cursor-pointer hover:border-primary/70 transition-colors"
+                      initial={{ opacity: 0, x: -10 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      transition={{ delay: i * 0.1 }}
+                      onClick={() => handlePinClick(pin.id)}
+                    >
+                      <span className="w-4 h-4 rounded-full bg-secondary text-secondary-foreground text-[10px] font-bold flex items-center justify-center">
+                        {i + 1}
+                      </span>
+                      <span className="text-xs text-foreground">{place?.name ?? "추천 장소"}</span>
+                    </motion.div>
+                    {i < pins.length - 1 && badgeLabel && (
+                      <span className="px-2.5 py-1 rounded-full border border-primary/40 bg-card/40 text-[10px] font-semibold text-primary/90 whitespace-nowrap shadow-[0_0_12px_rgba(0,246,255,0.25)]">
+                        {badgeLabel}
+                      </span>
                     )}
-                  </motion.div>
+                  </div>
                 );
               })}
             </div>

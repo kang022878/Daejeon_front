@@ -233,6 +233,18 @@ const Index = () => {
             const transport =
               (record.transport as string | undefined) ||
               (record.route_type as string | undefined);
+            const walkDuration =
+              (record.walk_duration as number | undefined) ||
+              (record.walking_duration as number | undefined) ||
+              (record.walkDuration as number | undefined) ||
+              (record.walkingDuration as number | undefined);
+            const driveDuration =
+              (record.drive_duration as number | undefined) ||
+              (record.driving_duration as number | undefined) ||
+              (record.car_duration as number | undefined) ||
+              (record.driveDuration as number | undefined) ||
+              (record.drivingDuration as number | undefined) ||
+              (record.carDuration as number | undefined);
             const moodTag =
               (record.mood_tag as string | undefined) ||
               (record.moodTag as string | undefined);
@@ -246,6 +258,8 @@ const Index = () => {
               lng,
               duration,
               transport,
+              walkDuration,
+              driveDuration,
               moodTag,
             };
           }

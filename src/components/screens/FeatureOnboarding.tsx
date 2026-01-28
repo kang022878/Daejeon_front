@@ -131,7 +131,7 @@ export function FeatureOnboarding({ onComplete }: FeatureOnboardingProps) {
 
               {/* Korean title */}
               <motion.h2
-                className="text-2xl md:text-3xl font-light text-foreground tracking-wide mb-6"
+                className="text-2xl md:text-3xl font-semibold text-foreground tracking-wide mb-6"
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.5, delay: 0.4 }}
@@ -141,7 +141,7 @@ export function FeatureOnboarding({ onComplete }: FeatureOnboardingProps) {
 
               {/* Description */}
               <motion.p
-                className="text-sm md:text-base text-muted-foreground font-extralight leading-relaxed whitespace-pre-line"
+                className="text-sm md:text-base text-muted-foreground font-medium leading-relaxed whitespace-pre-line"
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 transition={{ duration: 0.5, delay: 0.5 }}
@@ -166,14 +166,14 @@ export function FeatureOnboarding({ onComplete }: FeatureOnboardingProps) {
                 animate={{ scale: 1, opacity: 1 }}
                 transition={{ duration: 0.6, delay: 0.2 }}
               >
-                <h1 className="text-3xl md:text-4xl font-light tracking-title text-foreground">
+                <h1 className="text-3xl md:text-4xl font-semibold tracking-title text-foreground">
                   <span className="glow-blue">RE:</span> DAEJEON
                 </h1>
               </motion.div>
 
               {/* Welcome text */}
               <motion.p
-                className="text-lg md:text-xl text-foreground font-light tracking-wide mb-2"
+                className="text-lg md:text-xl text-foreground font-semibold tracking-wide mb-2"
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.5, delay: 0.4 }}
@@ -182,7 +182,7 @@ export function FeatureOnboarding({ onComplete }: FeatureOnboardingProps) {
               </motion.p>
               
               <motion.p
-                className="text-sm text-muted-foreground font-extralight mb-12"
+                className="text-sm text-muted-foreground font-medium mb-12"
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 transition={{ duration: 0.5, delay: 0.5 }}
@@ -239,7 +239,7 @@ export function FeatureOnboarding({ onComplete }: FeatureOnboardingProps) {
             <Button
               onClick={handleNext}
               variant="outline"
-              className="px-8 py-5 text-sm font-light tracking-wide border-primary/50 text-primary hover:bg-primary hover:text-primary-foreground transition-all duration-500"
+              className="px-8 py-5 text-sm font-semibold tracking-wide border-primary/50 text-primary hover:bg-primary hover:text-primary-foreground transition-all duration-500"
             >
               {currentSlide < slides.length - 1 ? "다음" : "시작하기"}
             </Button>

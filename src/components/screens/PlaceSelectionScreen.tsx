@@ -104,6 +104,20 @@ export function PlaceSelectionScreen({
             lng: item.lng ?? base?.lng,
             duration: (item as any).duration ?? base?.duration,
             transport: (item as any).transport ?? base?.transport,
+            walkDuration:
+              (item as any).walk_duration ??
+              (item as any).walking_duration ??
+              (item as any).walkDuration ??
+              (item as any).walkingDuration ??
+              base?.walkDuration,
+            driveDuration:
+              (item as any).drive_duration ??
+              (item as any).driving_duration ??
+              (item as any).car_duration ??
+              (item as any).driveDuration ??
+              (item as any).drivingDuration ??
+              (item as any).carDuration ??
+              base?.driveDuration,
           } as PlaceImage;
         })
         .filter((place) => typeof place.lat === "number" && typeof place.lng === "number");

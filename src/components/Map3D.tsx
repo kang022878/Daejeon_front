@@ -6,7 +6,12 @@ import { createPinsLayer } from "../map/customPinLayer";
 mapboxgl.accessToken = import.meta.env.VITE_MAPBOX_TOKEN;
 
 type PinData = { id: string; lng: number; lat: number; place_id?: number | null };
-type RouteStepMeta = { duration?: number; transport?: string };
+type RouteStepMeta = {
+  duration?: number;
+  transport?: string;
+  walkDuration?: number;
+  driveDuration?: number;
+};
 
 interface Map3DProps {
   pins: PinData[];
@@ -186,20 +191,30 @@ export default function Map3D({
       const end = routeData[index + 1];
       if (!start || !end) return;
 
+      const walkMinutes = typeof meta.walkDuration === "number" ? meta.walkDuration : undefined;
+      const driveMinutes = typeof meta.driveDuration === "number" ? meta.driveDuration : undefined;
       const labelParts = [];
-      if (meta.transport) labelParts.push(meta.transport);
-      if (typeof meta.duration === "number") labelParts.push(`${meta.duration}분`);
+
+      if (typeof walkMinutes === "number") labelParts.push(`도보 ${walkMinutes}분`);
+      if (typeof driveMinutes === "number") labelParts.push(`차로 ${driveMinutes}분`);
+
+      if (labelParts.length === 0) {
+        if (meta.transport) labelParts.push(meta.transport);
+        if (typeof meta.duration === "number") labelParts.push(`${meta.duration}분`);
+      }
+
       if (labelParts.length === 0) return;
 
       const badge = document.createElement("div");
-      badge.style.padding = "4px 8px";
+      badge.style.padding = "3px 8px";
       badge.style.borderRadius = "999px";
-      badge.style.background = "rgba(8, 16, 24, 0.8)";
+      badge.style.background = "rgba(8, 16, 24, 0.82)";
       badge.style.border = "1px solid rgba(0, 246, 255, 0.45)";
       badge.style.boxShadow = "0 0 12px rgba(0, 246, 255, 0.25)";
+      badge.style.backdropFilter = "blur(6px)";
       badge.style.color = "#d8feff";
-      badge.style.fontSize = "11px";
-      badge.style.fontWeight = "600";
+      badge.style.fontSize = "10px";
+      badge.style.fontWeight = "700";
       badge.style.whiteSpace = "nowrap";
       badge.textContent = labelParts.join(" · ");
 

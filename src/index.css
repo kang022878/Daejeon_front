@@ -88,7 +88,7 @@
   }
 
   body {
-    @apply bg-background text-foreground;
+    @apply bg-background text-foreground font-medium;
     font-family: "Inter", system-ui, -apple-system, sans-serif;
     letter-spacing: 0.02em;
   }
@@ -97,15 +97,15 @@
 /* Typography utilities for cinematic feel */
 @layer components {
   .text-elegant {
-    @apply font-light tracking-[0.15em] uppercase;
+    @apply font-medium tracking-[0.15em] uppercase;
   }
 
   .text-title {
-    @apply font-light tracking-[0.2em] uppercase;
+    @apply font-semibold tracking-[0.2em] uppercase;
   }
 
   .text-subtitle {
-    @apply font-extralight tracking-[0.1em];
+    @apply font-medium tracking-[0.1em];
   }
 
   /* Neon glow effects */

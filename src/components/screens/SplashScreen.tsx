@@ -145,7 +145,7 @@ export function SplashScreen({ onGetStarted }: { onGetStarted: () => void }) {
           transition={{ duration: 1.2, delay: 0.5, ease: "easeOut" }}
         >
           <motion.h1
-            className="text-4xl md:text-6xl font-light tracking-title text-foreground mb-4"
+            className="text-4xl md:text-6xl font-semibold tracking-title text-foreground mb-4"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ duration: 1, delay: 0.8 }}
@@ -154,7 +154,7 @@ export function SplashScreen({ onGetStarted }: { onGetStarted: () => void }) {
           </motion.h1>
           
           <motion.p
-            className="text-lg md:text-xl text-muted-foreground font-extralight tracking-wide"
+            className="text-lg md:text-xl text-muted-foreground font-medium tracking-wide"
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.8, delay: 1.2 }}
@@ -175,7 +175,7 @@ export function SplashScreen({ onGetStarted }: { onGetStarted: () => void }) {
             >
               <Button
                 onClick={onGetStarted}
-                className="px-8 py-6 text-lg font-light tracking-wide bg-transparent border border-primary text-primary hover:bg-primary hover:text-primary-foreground transition-all duration-500 glow-blue-box"
+                className="px-8 py-6 text-lg font-semibold tracking-wide bg-transparent border border-primary text-primary hover:bg-primary hover:text-primary-foreground transition-all duration-500 glow-blue-box"
                 variant="outline"
               >
                 Get Started

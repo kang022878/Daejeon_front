@@ -123,7 +123,7 @@ export function OnboardingCityBirth({ onComplete }: OnboardingCityBirthProps) {
           >
             {/* Main tagline */}
             <motion.h2
-              className="text-xl md:text-2xl lg:text-3xl text-foreground font-light tracking-wide text-center px-6 mb-4"
+              className="text-xl md:text-2xl lg:text-3xl text-foreground font-semibold tracking-wide text-center px-6 mb-4"
               initial={{ opacity: 0, y: 30, rotateX: -10 }}
               animate={{ opacity: 1, y: 0, rotateX: 0 }}
               transition={{ duration: 1.2, delay: 0.3, ease: [0.25, 0.46, 0.45, 0.94] }}
@@ -132,7 +132,7 @@ export function OnboardingCityBirth({ onComplete }: OnboardingCityBirthProps) {
             </motion.h2>
             
             <motion.h2
-              className="text-xl md:text-2xl lg:text-3xl text-foreground font-light tracking-wide text-center px-6"
+              className="text-xl md:text-2xl lg:text-3xl text-foreground font-semibold tracking-wide text-center px-6"
               initial={{ opacity: 0, y: 30, rotateX: -10 }}
               animate={{ opacity: 1, y: 0, rotateX: 0 }}
               transition={{ duration: 1.2, delay: 0.6, ease: [0.25, 0.46, 0.45, 0.94] }}
@@ -142,12 +142,12 @@ export function OnboardingCityBirth({ onComplete }: OnboardingCityBirthProps) {
 
             {/* Subtitle */}
             <motion.p
-              className="mt-6 text-sm md:text-base text-muted-foreground font-extralight tracking-wide text-center px-8"
+              className="mt-6 text-sm md:text-base text-muted-foreground font-medium tracking-wide text-center px-8"
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 1, delay: 1.2 }}
             >
-              Making Your Daejeon Fun
+              Make Your Daejeon Fun
             </motion.p>
 
             {/* Continue indicator */}
@@ -163,7 +163,7 @@ export function OnboardingCityBirth({ onComplete }: OnboardingCityBirthProps) {
                 transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
               />
               <motion.span
-                className="mt-2 text-xs text-muted-foreground tracking-widest uppercase"
+                className="mt-2 text-xs text-muted-foreground font-medium tracking-widest uppercase"
                 animate={{ opacity: [0.5, 1, 0.5] }}
                 transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
               >
